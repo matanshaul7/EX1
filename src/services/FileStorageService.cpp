@@ -1,38 +1,39 @@
 #include "FileStorageService.h"
+#include "../io/filesystem/DefaultFileSystem.h"
 #include <fstream>
-#include <iostream>
-using namespace std;
-bool FileStorageService::saveBlacklist(const unordered_set<string>& blacklist) {
-    ofstream file(m_blacklistFile);
-    if (!file) {
-        return false;
-    }
-    for (const auto& url : blacklist) {
-        file << url << endl;
-    }
-    return true;
+
+FileStorageService::FileStorageService(
+    const std::string& bitArrayPath,
+    const std::string& blacklistPath,
+    std::shared_ptr<IFileSystem> fileSystem)
+    : m_bitArrayFile(bitArrayPath), 
+      m_blacklistFile(blacklistPath),
+      m_fileSystem(fileSystem ? fileSystem : std::make_shared<DefaultFileSystem>()) {}
+
+bool FileStorageService::saveBlacklist(const std::unordered_set<std::string>& blacklist) {
+    return m_fileSystem->writeTextFile(m_blacklistFile, blacklist);
 }
 
-bool FileStorageService::loadBlacklist(unordered_set<string>& blacklist) {
-    ifstream file(m_blacklistFile);
-    if (!file) {
+bool FileStorageService::loadBlacklist(std::unordered_set<std::string>& blacklist) {
+    if (!m_fileSystem->exists(m_blacklistFile)) {
         return false;
     }
-    string url;
-    while (getline(file, url)) {
-        blacklist.insert(url);
-    }
-    return true;
+    return m_fileSystem->readTextFile(m_blacklistFile, blacklist);
 }
 
-bool FileStorageService::saveBitArray(const vector<bool>& bitArray) {
-    ofstream file(m_bitArrayFile, ios::binary);
-    if (!file) {
-        return false;
-    }
+bool FileStorageService::saveBitArray(const std::vector<bool>& bitArray) {
+    // Prepare data for binary storage
+    std::vector<char> data;
+    
+    // Store the size first
     size_t size = bitArray.size();
-    file.write(reinterpret_cast<const char*>(&size), sizeof(size));
-    // Pack bits into bytes for storage
+    data.resize(sizeof(size_t));
+    std::memcpy(data.data(), &size, sizeof(size_t));
+    
+    // Pack bits into bytes
+    size_t byteCount = (size + 7) / 8;
+    data.resize(sizeof(size_t) + byteCount);
+    
     for (size_t i = 0; i < size; i += 8) {
         unsigned char byte = 0;
         for (size_t j = 0; j < 8 && (i + j) < size; ++j) {
@@ -40,85 +41,76 @@ bool FileStorageService::saveBitArray(const vector<bool>& bitArray) {
                 byte |= (1 << j);
             }
         }
-        file.write(reinterpret_cast<const char*>(&byte), sizeof(byte));
+        data[sizeof(size_t) + i/8] = byte;
     }
-    return true;
+    
+    return m_fileSystem->writeBinaryFile(m_bitArrayFile, data);
 }
 
-bool FileStorageService::loadBitArray(vector<bool>& bitArray) {
-    ifstream file(m_bitArrayFile, ios::binary);
-    if (!file) {
+bool FileStorageService::loadBitArray(std::vector<bool>& bitArray) {
+    if (!m_fileSystem->exists(m_bitArrayFile)) {
         return false;
     }
+    
+    std::vector<char> data;
+    if (!m_fileSystem->readBinaryFile(m_bitArrayFile, data) || data.size() < sizeof(size_t)) {
+        return false;
+    }
+    
+    // Read the size
     size_t size;
-    file.read(reinterpret_cast<char*>(&size), sizeof(size));
+    std::memcpy(&size, data.data(), sizeof(size_t));
     bitArray.resize(size);
+    
     // Unpack bytes into bits
     for (size_t i = 0; i < size; i += 8) {
-        unsigned char byte;
-        file.read(reinterpret_cast<char*>(&byte), sizeof(byte));
-        
-        for (size_t j = 0; j < 8 && (i + j) < size; ++j) {
-            bitArray[i + j] = (byte & (1 << j)) != 0;
+        if (sizeof(size_t) + i/8 < data.size()) {
+            unsigned char byte = data[sizeof(size_t) + i/8];
+            for (size_t j = 0; j < 8 && (i + j) < size; ++j) {
+                bitArray[i + j] = (byte & (1 << j)) != 0;
+            }
         }
     }
+    
     return true;
 }
 
-bool FileStorageService::removeFromBlacklist(const string& url) {
-    // Read all URLs except the one to delete
-    vector<string> urls;
-    ifstream inFile(m_blacklistFile);
-    string line;
-    if (!inFile) {
+bool FileStorageService::removeFromBlacklist(const std::string& url) {
+    std::unordered_set<std::string> blacklist;
+    if (!loadBlacklist(blacklist)) {
         return false;
     }
-    while (getline(inFile, line)) {
-        if (line != url) {
-            urls.push_back(line);
-        }
+    
+    auto it = blacklist.find(url);
+    if (it == blacklist.end()) {
+        return false; // URL not found
     }
-    inFile.close();
-    // Write back all URLs except the deleted one
-    ofstream outFile(m_blacklistFile);
-    if (!outFile) {
+    
+    blacklist.erase(it);
+    return saveBlacklist(blacklist);
+}
+
+bool FileStorageService::isInBlacklist(const std::string& url) {
+    std::unordered_set<std::string> blacklist;
+    if (!loadBlacklist(blacklist)) {
         return false;
     }
-    for (const string& u : urls) {
-        outFile << u << endl;
-    }
-    return true;
+    
+    return blacklist.find(url) != blacklist.end();
 }
 
-bool FileStorageService::isInBlacklist(const string& url) {
-    ifstream file(m_blacklistFile);
-    string line;
-    if (!file) {
+bool FileStorageService::fileExistsAndNotEmpty(const std::string& filename) {
+    if (!m_fileSystem->exists(filename)) {
         return false;
     }
-    while (getline(file, line)) {
-        if (line == url) {
-            return true;
-        }
-    }
-    return false;
+    
+    std::unordered_set<std::string> lines;
+    return m_fileSystem->readTextFile(filename, lines) && !lines.empty();
 }
 
-bool FileStorageService::fileExistsAndNotEmpty(const string& filename) {
-    ifstream file(filename);
-    return file.good() && file.peek() != ifstream::traits_type::eof();
-}
-
-bool FileStorageService::initializeFilter(vector<bool>& bitArray, unordered_set<string>& blacklist) {
-    bool bitArrayLoaded = false;
-    if (fileExistsAndNotEmpty(m_bitArrayFile)) {
-        bitArrayLoaded = loadBitArray(bitArray);
-    }
-
-    bool blacklistLoaded = false;
-    if (fileExistsAndNotEmpty(m_blacklistFile)) {
-        blacklistLoaded = loadBlacklist(blacklist);
-    }
-
+bool FileStorageService::initializeFilter(std::vector<bool>& bitArray, std::unordered_set<std::string>& blacklist) {
+    bool bitArrayLoaded = loadBitArray(bitArray);
+    bool blacklistLoaded = loadBlacklist(blacklist);
+    
     return bitArrayLoaded || blacklistLoaded;
 }
