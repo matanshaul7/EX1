@@ -11,9 +11,9 @@ include_directories(${CMAKE_SOURCE_DIR})
 # Add source files for the library
 add_library(bloom_filter
     # Original files
-    ${CMAKE_SOURCE_DIR}/src/bloom_Filter/bloomFilter.cpp
-    ${CMAKE_SOURCE_DIR}/src/bloom_Filter/repeatedHash.cpp
-    ${CMAKE_SOURCE_DIR}/src/bloom_Filter/hashFactory.cpp
+    ${CMAKE_SOURCE_DIR}/src/bloom_filter/bloomFilter.cpp
+    ${CMAKE_SOURCE_DIR}/src/bloom_filter/repeatedHash.cpp
+    ${CMAKE_SOURCE_DIR}/src/bloom_filter/hashFactory.cpp
     ${CMAKE_SOURCE_DIR}/src/ioHandling/inputManager.cpp
     ${CMAKE_SOURCE_DIR}/src/services/CommandProcessor.cpp
     ${CMAKE_SOURCE_DIR}/src/utils/URLValidator.cpp
@@ -53,10 +53,16 @@ FetchContent_MakeAvailable(googletest)
 # Add test executable with all test files
 add_executable(runTests 
     # Original test files
-    #${CMAKE_SOURCE_DIR}/Tests/test_inputManager.cpp
+    ${CMAKE_SOURCE_DIR}/Tests/test_inputManager.cpp
     
-    # New test files
+    # test server
     ${CMAKE_SOURCE_DIR}/Tests/test_server.cpp
+
+    # test main
+    ${CMAKE_SOURCE_DIR}/Tests/test_main.cpp
+    
+    # test fileManager
+    ${CMAKE_SOURCE_DIR}/Tests/test_fileManager.cpp
 )
 target_link_libraries(runTests gtest_main bloom_filter)
 

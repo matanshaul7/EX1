@@ -75,6 +75,7 @@ bool FileStorageService::loadBitArray(std::vector<bool>& bitArray) {
     return true;
 }
 
+<<<<<<< HEAD
 bool FileStorageService::removeFromBlacklist(const std::string& url) {
     std::unordered_set<std::string> blacklist;
     if (!loadBlacklist(blacklist)) {
@@ -97,6 +98,39 @@ bool FileStorageService::isInBlacklist(const std::string& url) {
     }
     
     return blacklist.find(url) != blacklist.end();
+=======
+
+bool FileStorageService::removeFromBlacklist(const string& url) {
+    // Load current blacklist
+    unordered_set<string> blacklist;
+    loadBlacklist(blacklist);
+    // Check if URL exists in blacklist
+    auto it = blacklist.find(url);
+    if (it == blacklist.end()) {
+        // For testing purposes, also check without http:// prefix
+        string urlWithoutPrefix = url;
+        // Code to remove "http://" if present
+        if (urlWithoutPrefix.find("http://") == 0) {
+            urlWithoutPrefix = urlWithoutPrefix.substr(7);
+        }
+        it = blacklist.find(urlWithoutPrefix);
+        string urlWithPrefix = "http://" + url;
+        auto it2 = blacklist.find(urlWithPrefix);
+        if (it == blacklist.end() && it2 == blacklist.end()) {
+            return false; // URL not found
+        }
+        if (it != blacklist.end()) {
+            blacklist.erase(it);
+        } else {
+            blacklist.erase(it2);
+        }
+    } else {
+        // URL found in blacklist
+        blacklist.erase(it);
+    }
+    saveBlacklist(blacklist);
+    return true;
+>>>>>>> 329ab168deb56388c154863e20e97f5fcc5ff92b
 }
 
 bool FileStorageService::fileExistsAndNotEmpty(const std::string& filename) {

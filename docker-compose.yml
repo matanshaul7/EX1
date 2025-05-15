@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bloom_server
+    ports:
+      - "12345:12345"
+    command: ["0.0.0.0", "12345", "m=10000 k=7"]
+    stdin_open: true
+    tty: true
+
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: bloom_client
+    depends_on:
+      - server
+    command: ["server", "12345"]
+    stdin_open: true
+    tty: true
+
+  tests:
+    build:
+      context: .
+      dockerfile: tests/Dockerfile
+    container_name: bloom_tests

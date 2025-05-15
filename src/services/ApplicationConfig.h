@@ -4,17 +4,26 @@
 #include <string>
 #include <vector>
 #include "../interfaces/IApplicationService.h"
+using namespace std;
 
+/**
+ * @class ApplicationConfig
+ * @brief A class responsible for configuring the application.
+ * it parses the configuration line, creates the necessary services from file if it exists, or creates them from the command line.
+ */
 class ApplicationConfig {
 public:
     // Parse configuration and set up the application
-    static std::shared_ptr<IApplicationService> configure(const std::string& configLine);
-    
-private:
+    static shared_ptr<IApplicationService> configure(const string& configLine);
+
+private: 
+    static bool  configFromFile(string& configLine) ;
+    static bool saveConfigLine(const string& configLine);
+    static const string m_configFilePath;
     // Helper methods for configuration steps
-    static std::vector<size_t> parseHashIds(const std::string& configLine, size_t& bitArraySize);
-    static std::shared_ptr<IApplicationService> createApplicationService(
+    static vector<size_t> parseHashIds(const string& configLine, size_t& bitArraySize);
+    static shared_ptr<IApplicationService> createApplicationService(
         size_t bitArraySize,
-        const std::vector<size_t>& hashIds);
+        const vector<size_t>& hashIds);
 };
 #endif // APPLICATIONCONFIG_H

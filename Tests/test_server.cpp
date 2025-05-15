@@ -1,6 +1,9 @@
 #include <gtest/gtest.h>
 #include "../src/networking/Server.h"
+<<<<<<< HEAD
 #include "../networking/server.h"
+=======
+>>>>>>> 329ab168deb56388c154863e20e97f5fcc5ff92b
 
 
 // Test for server initialization

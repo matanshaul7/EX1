@@ -1,80 +1,39 @@
+<<<<<<< HEAD:src/io/inputManager.cpp
 #include "../io/inputManager.h"
 #include "../bloom_Filter/bloomFilter.h"
+=======
+#include "../ioHandling/inputManager.h"
+#include "../bloom_filter/bloomFilter.h"
+>>>>>>> 329ab168deb56388c154863e20e97f5fcc5ff92b:src/ioHandling/inputManager.cpp
 #include "../services/FileStorageService.h"
-#include "../bloom_Filter/hashFactory.h"
+#include "../bloom_filter/hashFactory.h"
+
 #include <sstream>
-enum class Command {
-    POST = 1,
-    GET = 2,
-    DELETE = 3
-};
-InputManager::InputManager() : m_commandProcessor(nullptr){}
 
-InputManager::InputManager(unique_ptr<CommandProcessor> commandProcessor) 
-    : m_commandProcessor(move(commandProcessor)) {}
 
-string InputManager::processCommand(const string& line) {
-    istringstream iss(line);
-    int command;
+
     
-    if (line.empty()) {
-        return "400 Bad Request"; // Empty command
-    }
-        
-    if (!(iss >> command)) {
-       return "400 Bad Request"; // Invalid command
-    }
 
-    // Extract URL and trim leading whitespace
+bool InputManager::splitRequest(string& command, string& url) {
+    // Validate command format
+    if (command.empty()) {
+        return false;
+    }
+    istringstream iss(command);
+    string commandType;
+    iss >> commandType;
+    
     string url;
     getline(iss >> ws, url);
-        
-    switch (command){
-        case static_cast<int>(Command::POST): {
-            return m_commandProcessor->addToBlacklist(url);
-        }
-        case static_cast<int>(Command::GET): {
-            return m_commandProcessor->checkBlacklist(url);
-        }
-        case static_cast<int>(Command::DELETE): {
-            return m_commandProcessor->deleteFromBlacklist(url);
-        }
-        default:
-            return "400 Bad Request"; // Invalid command
-    }
-}
 
-unique_ptr <InputManager> InputManager::createFromConfig(const string& configLine) {
-    istringstream iss(configLine);
-    size_t bitArraySize;
-    vector <size_t> hashInfos;
-    if (!(iss >> bitArraySize)) {
-        return nullptr; // Invalid size
+    URLValidator urlValidator;
+    string standardURL = urlValidator.standardize(url);
+    if (standardURL.empty()) {
+        return false;
     }
-    size_t hashId;
-    while (iss >> hashId) {
-        hashInfos.push_back(hashId);
-    }
-    if (hashInfos.empty()) {
-        return nullptr; // Invalid hash function info
-    }
-    try{
-        auto hashFunctions = hashFactory::createHashFunctions(hashInfos);
-        unique_ptr<IBloomFilter> filter = make_unique<bloomFilter>(bitArraySize, hashFunctions);
-        unique_ptr<IStorageService> storageService = make_unique<FileStorageService>();
-        vector<bool> bits = filter->getBitArray();
-        unordered_set<string> blackList;
-        storageService->initializeFilter(bits, blackList);
-        filter->setBitArray(bits);
-        filter->setBlackList(blackList);
-        unique_ptr<CommandProcessor> commandProcessor = make_unique<CommandProcessor>(move(filter), move(storageService));
-        return make_unique<InputManager>(move(commandProcessor)); // Return the initialized InputManager
-    }
-    catch (const std::exception& e) {
-        return nullptr; // Initialization failed
-    }
-
-    
+    url = standardURL;
+    command = commandType;
+    return true;
 }
     
 

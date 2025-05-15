@@ -7,13 +7,13 @@ Server::Server(int port)
     : m_port(port), 
       m_initialized(port > 0), // Simple validation for test
       m_running(false),
-      m_socketListener(std::make_shared<TCPSocketListener>()),
+      m_socketListener(make_shared<TCPSocketListener>()),
       m_appService(nullptr) {
 }
 
 // Production constructor
-Server::Server(std::shared_ptr<ISocketListener> socketListener,
-               std::shared_ptr<IApplicationService> appService)
+Server::Server(shared_ptr<ISocketListener> socketListener,
+               shared_ptr<IApplicationService> appService)
     : m_port(0),  // Default port, will be set when starting
       m_initialized(socketListener != nullptr && appService != nullptr),
       m_running(false),
@@ -33,7 +33,7 @@ bool Server::isInitialized() const {
     return m_initialized;
 }
 
-bool Server::start(int port, const std::string& ipAddress) {
+bool Server::start(int port, const string& ipAddress) {
     if (!m_initialized) {
         return false;
     }
@@ -72,35 +72,34 @@ void Server::stop() {
 }
 
 void Server::run() {
-    if (!m_running) {
-        return;
+    if (!m_initialized || !m_socketListener) {
+        return; // Not initialized or no socket listener
     }
-    
-    
+    m_running = true;
     while (m_running) {
         try {
             auto connection = m_socketListener->acceptConnection();
-            if (connection && connection->isConnected()) {
-                // Handle the connection here or delegate to a connection handler
-                // In this implementation, we're just showing it's running
-                std::string data;
+            if (!connection || !connection->isConnected()) {
+                continue; // No valid connection
+            }
+            bool clientConnected = true;
+            while (clientConnected && m_running) {
+                string data;
                 if (connection->receiveData(data)) {
+                    // Process the received data
                     if (m_appService) {
-                        std::string response = m_appService->processCommand(data);
-                        connection->sendData(response);
-                    } else {
-                        connection->sendData("Server is running but no application service is available");
+                        string response = m_appService->processCommand(data);
+                        connection->sendData(response + "\n");
                     }
+                } else {
+                    clientConnected = false; // Connection closed or error
                 }
             }
         }
-        catch (const std::exception& e) {
-            std::cerr << "Error in server loop: " << e.what() << std::endl;
-            // Continue running
+        catch (const exception& e) {
         }
     }
 }
-
 // Test helper method
 bool Server::handleClient(int clientId) {
     if (!m_running) {
