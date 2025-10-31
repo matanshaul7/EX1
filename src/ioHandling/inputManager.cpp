@@ -16,14 +16,12 @@ inputManager::~inputManager() {}
 
 
 void inputManager::tryLoadFile() {
-    // טוען את ה-bit array אם הקובץ קיים
     vector<bool> bits = m_bloomFilter->getBitArray();
     if (m_fileManager->fileExistsAndNotEmpty("data/bit_array.dat")) {
         m_fileManager->loadBitArray(bits);
         m_bloomFilter->setBitArray(bits);
     }
 
-    // טוען את ה-blacklist אם הקובץ קיים
     unordered_set<string> bl;
     if (m_fileManager->fileExistsAndNotEmpty("data/blacklist.txt")) {
         m_fileManager->loadBlackList(bl);
