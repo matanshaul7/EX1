@@ -37,7 +37,7 @@ docker run --rm -it bloom_filter_app
 ### Run the Unit Tests
 To run the unit tests, write this command line:
 ```bash
-docker run bloom-filter ./runTests
+ docker run bloom_filter_app ./runTests
 ```
 
 ## Example Usage
